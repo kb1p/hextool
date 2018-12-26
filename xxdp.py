@@ -99,7 +99,7 @@ are not specified, use stdout (for dump) and stdin (for patch).
         else:
             fin = open(freeargs[0], "rb")
             if nFreeArgs > 1:
-                fout = open(freeargs[1], "wt")
+                fout = open(freeargs[1], "wb")
             else:
                 fout = sys.stdout
             conv.bin2text(fin, fout)
