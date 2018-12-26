@@ -13,12 +13,12 @@ import string
 import getopt
 
 class Converter(object):
-    __slots__ = "nCols", "colSize", "__printableChars"
+    __slots__ = "nCols", "colSize"
+    __printableChars = frozenset(string.printable) - frozenset(string.whitespace) | frozenset(" ")
 
     def __init__(self):
         self.nCols = 8
         self.colSize = 2
-        self.__printableChars = frozenset(string.printable) - frozenset(string.whitespace) | frozenset(" ")
 
     def bin2text(self, fin, fout):
         fin.seek(0, os.SEEK_END)
@@ -75,7 +75,14 @@ def main(args):
 
     nFreeArgs = len(freeargs)
     if nFreeArgs == 0:
-        print >> sys.stderr, "Usage: %s [-r -c COLS -s COLSIZE] <infile> [<outfile>]" % args[0]
+        usage = """Incorrect arguments. Usage:
+Dump:  %(prog)s [-c columns -s bytes_per_column] in-file [out-file]
+Patch: %(prog)s -r [in-file] out-file
+
+Arguments in rectangular brackets are optional. When optional files
+are not specified, use stdout (for dump) and stdin (for patch).
+        """ % { "prog": args[0] }
+        print >> sys.stderr, usage
         return 1
 
     fin, fout = None, None
