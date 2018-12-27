@@ -20,30 +20,33 @@ class Converter(object):
         self.nCols = 8
         self.colSize = 2
 
-    def bin2text(self, fin, fout):
-        fin.seek(0, os.SEEK_END)
-        size = fin.tell()
-        fin.seek(0, os.SEEK_SET)
-        addrFmt = "%%0%dx: " % int(math.ceil(math.log(size, 16)))
+    def bin2text(self, fin, fout, offset, size):
+        if size < 0:
+            fin.seek(0, os.SEEK_END)
+            size = fin.tell() - offset
+        fin.seek(offset, os.SEEK_SET)
+        addrFmt = "%%0%dx: " % int(math.ceil(math.log(offset + size, 16)))
         blockSize = self.nCols * self.colSize
         colRange = range(self.nCols)
-        eof = False
-        while not eof:
-            addr = fin.tell()
-            data = fin.read(blockSize)
-            rem = blockSize - len(data)
-            eof = rem > 0
-            if rem < blockSize:
-                fout.write(addrFmt % addr)
+        needMore = size > 0
+        while needMore:
+            reqSize = min(blockSize, size)
+            data = fin.read(reqSize)
+            dataSize = len(data)
+            if dataSize > 0:
+                fout.write(addrFmt % offset)
                 cols = ("".join("%02x" % ord(x) for x in buffer(data, c * self.colSize, self.colSize)) \
                         for c in colRange)
                 fout.write(" ".join(cols))
-                if eof:
+                if blockSize > dataSize:
                     # padding
-                    fout.write("  " * rem)
+                    fout.write("  " * (blockSize - dataSize))
                 fout.write("  ")
                 fout.write("".join(c if c in self.__printableChars else "." for c in data))
                 fout.write(os.linesep)
+            size -= dataSize
+            offset += dataSize
+            needMore = size > 0 and dataSize == reqSize
 
     def text2bin(self, fin, fout):
         for line in fin:
@@ -61,26 +64,41 @@ class Converter(object):
                 bindata = "".join(chr(int(chunk[x:x+2], 16)) for x in xrange(0, len(chunk), 2))
                 fout.write(bindata)
 
+def parseNumber(strnum):
+    if strnum.startswith("0x"):
+        return int(strnum[2:], 16)
+    elif strnum.startswith("0"):
+        return int(strnum[1:], 8)
+    else:
+        return int(strnum)
+
 def main(args):
     rev = False
     conv = Converter()
-    opts, freeargs = getopt.getopt(args[1:], "rc:s:")
+    offset, size = 0, -1
+    opts, freeargs = getopt.getopt(args[1:], "rc:w:f:s:")
     for o, a in opts:
         if o == "-r":
             rev = True
         elif o == "-c":
-            conv.nCols = int(a)
+            conv.nCols = parseNumber(a)
+        elif o == "-w":
+            conv.colSize = parseNumber(a)
+        elif o == "-f":
+            offset = parseNumber(a)
         elif o == "-s":
-            conv.colSize = int(a)
+            size = parseNumber(a)
 
     nFreeArgs = len(freeargs)
     if nFreeArgs == 0:
         usage = """Incorrect arguments. Usage:
-Dump:  %(prog)s [-c columns -s bytes_per_column] in-file [out-file]
+Dump:  %(prog)s [-c columns -w bytes_per_column -f offset -s size] in-file [out-file]
 Patch: %(prog)s -r [in-file] out-file
 
 Arguments in rectangular brackets are optional. When optional files
 are not specified, use stdout (for dump) and stdin (for patch).
+Numbers can be provided as hex literals (prefixed with '0x'), octal (prefixed with '0')
+or decimal (default).
         """ % { "prog": args[0] }
         print >> sys.stderr, usage
         return 1
@@ -102,7 +120,7 @@ are not specified, use stdout (for dump) and stdin (for patch).
                 fout = open(freeargs[1], "wb")
             else:
                 fout = sys.stdout
-            conv.bin2text(fin, fout)
+            conv.bin2text(fin, fout, offset, size)
     except IOError as err:
         print >> sys.stderr, "I/O error: %s, file: \"%s\"" % (err.strerror, err.filename)
     finally:
