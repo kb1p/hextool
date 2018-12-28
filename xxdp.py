@@ -21,10 +21,14 @@ class Converter(object):
         self.colSize = 2
 
     def bin2text(self, fin, fout, offset, size):
-        if size < 0:
-            fin.seek(0, os.SEEK_END)
-            size = fin.tell() - offset
-        fin.seek(offset, os.SEEK_SET)
+        try:
+            if size < 0:
+                fin.seek(0, os.SEEK_END)
+                size = fin.tell() - offset
+            fin.seek(offset, os.SEEK_SET)
+        except IOError:
+            if size < 0:
+                size = sys.maxsize
         addrFmt = "%%0%dx: " % int(math.ceil(math.log(offset + size, 16)))
         blockSize = self.nCols * self.colSize
         colRange = range(self.nCols)
@@ -90,9 +94,9 @@ def main(args):
             size = parseNumber(a)
 
     nFreeArgs = len(freeargs)
-    if nFreeArgs == 0:
+    if nFreeArgs == 0 and rev:
         usage = """Incorrect arguments. Usage:
-Dump:  %(prog)s [-c columns -w bytes_per_column -f offset -s size] in-file [out-file]
+Dump:  %(prog)s [-c columns -w bytes_per_column -f offset -s size] [in-file] [out-file]
 Patch: %(prog)s -r [in-file] out-file
 
 Arguments in rectangular brackets are optional. When optional files
@@ -106,20 +110,14 @@ or decimal (default).
     fin, fout = None, None
     try:
         if rev:
-            if nFreeArgs > 1:
-                fin = open(freeargs[0], "rt")
-            else:
-                fin = sys.stdin
-            outFn = freeargs[nFreeArgs - 1]
+            fin = open(freeargs[0], "rt") if nFreeArgs > 1 else sys.stdin
+            outFn = freeargs[-1]
             writeMode = "r+b" if os.path.exists(outFn) else "wb"
             fout = open(outFn, writeMode)
             conv.text2bin(fin, fout)
         else:
-            fin = open(freeargs[0], "rb")
-            if nFreeArgs > 1:
-                fout = open(freeargs[1], "wb")
-            else:
-                fout = sys.stdout
+            fin = open(freeargs[0], "rb") if nFreeArgs > 0 else sys.stdin
+            fout = open(freeargs[1], "wb") if nFreeArgs > 1 else sys.stdout
             conv.bin2text(fin, fout, offset, size)
     except IOError as err:
         print >> sys.stderr, "I/O error: %s, file: \"%s\"" % (err.strerror, err.filename)
