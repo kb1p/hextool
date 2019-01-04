@@ -77,10 +77,11 @@ def parseNumber(strnum):
         return int(strnum)
 
 def main(args):
+    showUsage = False
     rev = False
     conv = Converter()
     offset, size = 0, -1
-    opts, freeargs = getopt.getopt(args[1:], "rc:w:f:s:")
+    opts, freeargs = getopt.getopt(args[1:], "hrc:w:f:s:")
     for o, a in opts:
         if o == "-r":
             rev = True
@@ -92,10 +93,13 @@ def main(args):
             offset = parseNumber(a)
         elif o == "-s":
             size = parseNumber(a)
+        elif o == "-h":
+            showUsage = True
 
     nFreeArgs = len(freeargs)
-    if nFreeArgs == 0 and rev:
-        usage = """Incorrect arguments. Usage:
+    showUsage = showUsage or (nFreeArgs == 0 and rev)
+    if showUsage:
+        usage = """Usage:
 Dump:  %(prog)s [-c columns -w bytes_per_column -f offset -s size] [in-file] [out-file]
 Patch: %(prog)s -r [in-file] out-file
 
