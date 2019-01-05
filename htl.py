@@ -18,14 +18,6 @@ def message(msg):
     sys.stderr.write(msg)
     sys.stderr.write(os.linesep)
 
-def s2b(s):
-    """String to bytes, if needed"""
-    return bytes(s, "ascii") if VER3 else s
-
-def b2s(b):
-    """Bytes to string, if needed"""
-    return str(b, "ascii") if VER3 else b
-
 class Converter(object):
     __slots__ = "nCols", "colSize"
     __printableChars = frozenset(string.printable) - frozenset(string.whitespace) | frozenset(" ")
@@ -43,7 +35,7 @@ class Converter(object):
         except IOError:
             if size < 0:
                 size = sys.maxsize
-        addrFmt = s2b("%%0%dx: " % int(math.ceil(math.log(offset + size, 16))))
+        addrFmt = "%%0%dx: " % int(math.ceil(math.log(offset + size, 16)))
         blockSize = self.nCols * self.colSize
         colRange = range(self.nCols)
         needMore = size > 0
@@ -56,14 +48,14 @@ class Converter(object):
                 cols = ("".join("%02x" % (x if VER3 else ord(x)) \
                         for x in data[c * self.colSize:(c + 1) * self.colSize]) \
                         for c in colRange)
-                fout.write(s2b(" ".join(cols)))
+                fout.write(" ".join(cols))
                 if blockSize > dataSize:
                     # padding
-                    fout.write(s2b("  " * (blockSize - dataSize)))
-                fout.write(s2b("  "))
-                fout.write(s2b("".join(c if c in self.__printableChars else "." \
-                                       for c in (map(chr, data) if VER3 else data))))
-                fout.write(s2b(os.linesep))
+                    fout.write("  " * (blockSize - dataSize))
+                fout.write("  ")
+                fout.write("".join(c if c in self.__printableChars else "." \
+                                   for c in (map(chr, data) if VER3 else data)))
+                fout.write(os.linesep)
             size -= dataSize
             offset += dataSize
             needMore = size > 0 and dataSize == reqSize
@@ -135,8 +127,8 @@ or decimal (default).
             fout = open(outFn, writeMode)
             conv.text2bin(fin, fout)
         else:
-            fin = open(freeargs[0], "rb") if nFreeArgs > 0 else sys.stdin
-            fout = open(freeargs[1], "wb") if nFreeArgs > 1 else sys.stdout
+            fin = open(freeargs[0], "rb") if nFreeArgs > 0 else (sys.stdin.buffer if VER3 else sys.stdin)
+            fout = open(freeargs[1], "wt" if VER3 else "wb") if nFreeArgs > 1 else sys.stdout
             conv.bin2text(fin, fout, offset, size)
     except IOError as err:
         message("I/O error: %s, file: \"%s\"" % (err.strerror, err.filename))
