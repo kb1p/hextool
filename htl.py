@@ -12,6 +12,12 @@ import math
 import string
 import getopt
 
+VER3 = sys.version_info.major >= 3
+
+def message(msg):
+    sys.stderr.write(msg)
+    sys.stderr.write(os.linesep)
+
 class Converter(object):
     __slots__ = "nCols", "colSize"
     __printableChars = frozenset(string.printable) - frozenset(string.whitespace) | frozenset(" ")
@@ -35,19 +41,21 @@ class Converter(object):
         needMore = size > 0
         while needMore:
             reqSize = min(blockSize, size)
-            data = fin.read(reqSize)
+            data = memoryview(fin.read(reqSize))
             dataSize = len(data)
             if dataSize > 0:
                 fout.write(addrFmt % offset)
-                cols = ("".join("%02x" % ord(x) for x in buffer(data, c * self.colSize, self.colSize)) \
+                cols = ("".join("%02x" % (x if VER3 else ord(x)) \
+                        for x in data[c * self.colSize:(c + 1) * self.colSize]) \
                         for c in colRange)
                 fout.write(" ".join(cols))
                 if blockSize > dataSize:
                     # padding
                     fout.write("  " * (blockSize - dataSize))
                 fout.write("  ")
-                fout.write("".join(c if c in self.__printableChars else "." for c in data))
-                fout.write(os.linesep)
+                fout.write("".join(c if c in self.__printableChars else "." \
+                                   for c in (map(chr, data) if VER3 else data)))
+                fout.write("\n")
             size -= dataSize
             offset += dataSize
             needMore = size > 0 and dataSize == reqSize
@@ -65,7 +73,10 @@ class Converter(object):
             textSep = line.find("  ")
             data = line[start:textSep] if textSep > 0 else line[start:]
             for chunk in data.split():
-                bindata = "".join(chr(int(chunk[x:x+2], 16)) for x in xrange(0, len(chunk), 2))
+                if VER3:
+                    bindata = bytes(int(chunk[x:x+2], 16) for x in range(0, len(chunk), 2))
+                else:
+                    bindata = "".join(chr(int(chunk[x:x+2], 16)) for x in xrange(0, len(chunk), 2))
                 fout.write(bindata)
 
 def parseNumber(strnum):
@@ -108,7 +119,7 @@ are not specified, use stdout (for dump) and stdin (for patch).
 Numbers can be provided as hex literals (prefixed with '0x'), octal (prefixed with '0')
 or decimal (default).
         """ % { "prog": args[0] }
-        print >> sys.stderr, usage
+        message(usage)
         return 1
 
     fin, fout = None, None
@@ -120,11 +131,11 @@ or decimal (default).
             fout = open(outFn, writeMode)
             conv.text2bin(fin, fout)
         else:
-            fin = open(freeargs[0], "rb") if nFreeArgs > 0 else sys.stdin
-            fout = open(freeargs[1], "wb") if nFreeArgs > 1 else sys.stdout
+            fin = open(freeargs[0], "rb") if nFreeArgs > 0 else (sys.stdin.buffer if VER3 else sys.stdin)
+            fout = open(freeargs[1], "wt") if nFreeArgs > 1 else sys.stdout
             conv.bin2text(fin, fout, offset, size)
     except IOError as err:
-        print >> sys.stderr, "I/O error: %s, file: \"%s\"" % (err.strerror, err.filename)
+        message("I/O error: %s, file: \"%s\"" % (err.strerror, err.filename))
     finally:
         if fout != None:
             if fout == sys.stdout:
@@ -138,4 +149,3 @@ or decimal (default).
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
-
