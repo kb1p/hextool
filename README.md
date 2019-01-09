@@ -1,7 +1,7 @@
 # hextool
 Cross-platform utility to create hex dumps and patching binary files.
 
-- Requires Python 2.7 to run (Python 3 compatibility will be implemented soon)
+- Requires Python (compatible with versions 2.7 and 3+)
 - Inspired by (not copypasted from) linux utility *xxd* authored by Juergen Weigert
 
 ## Usage examples
