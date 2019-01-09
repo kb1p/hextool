@@ -55,7 +55,7 @@ class Converter(object):
                 fout.write("  ")
                 fout.write("".join(c if c in self.__printableChars else "." \
                                    for c in (map(chr, data) if VER3 else data)))
-                fout.write(os.linesep)
+                fout.write("\n")
             size -= dataSize
             offset += dataSize
             needMore = size > 0 and dataSize == reqSize
@@ -128,7 +128,7 @@ or decimal (default).
             conv.text2bin(fin, fout)
         else:
             fin = open(freeargs[0], "rb") if nFreeArgs > 0 else (sys.stdin.buffer if VER3 else sys.stdin)
-            fout = open(freeargs[1], "wt" if VER3 else "wb") if nFreeArgs > 1 else sys.stdout
+            fout = open(freeargs[1], "wt") if nFreeArgs > 1 else sys.stdout
             conv.bin2text(fin, fout, offset, size)
     except IOError as err:
         message("I/O error: %s, file: \"%s\"" % (err.strerror, err.filename))
