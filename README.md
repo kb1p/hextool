@@ -22,11 +22,12 @@ Cross-platform utility to create hex dumps and patching binary files.
 
 5. Patching of a binary file "foo.bar":  
 5.1. Create a text file "foo.bar.patch", fill it with lines of text each having the following layout:  
-`[<offset>:] <data-chunk> <data-chunk> ... <data-chunk>  <comment>`  
+`[<offset>:] <data-chunk> <data-chunk> ... <data-chunk><delimiter><comment>`  
 where:  
 **offset** is an optional offset in the binary file where the data will be placed. It is separated from the data part with colon. If omitted, writing will continue from the offset on the previous line + size of the data on the previous line. If the offset is not specified on the first line of the patch file, its data will be put to the beginning of the file.  
-**data-chunk** is a hex string representing the bytes that will be written starting at *offset*. Data chunks may be separated from each other and the offset with no more than *one* space. Spaces are allowed for compatibility with the dump; it's okay to write a single hex string without spaces.  
-**comment** is an arbitrary text starting with the first occurence *two* or more sequential spaces. When hextool detects two sequential spaces on the line it ignores everything to the end of this line.  
+**data-chunk** is a sequence of hex digits representing the bytes that will be written to the output file starting at *offset*. The number of hex digits in a chunk must always be even because two hex digits represent a single byte. Chunks are separated by spaces; it's also okay to write data as a single chunk, without spaces. Please note that without explicit delimiter specification (`-d` command line option), two sequential spaces are treated as a *delimiter* (see below) and all text after two sequential spaces is ignored, so no more than one space should be used to separate chunks in that case. Explicit specification of the delimiter allows to remove this limitation.  
+**delimiter**: any sequence of characters specified as an argument to the `-d` command line option; all text following this sequence to the end of the current line will be ignored  
+**comment** is an arbitrary text starting with the first occurence *delimiter* (two spaces by default, controlled by `-d` command line option) and ending at the line end. Comments are simply ignored, they were added only for compatibility with the dump text format.  
 Empty lines are ignored.  
 5.2. Apply the patch to the file:  
 `$ python htl.py -r foo.bar.patch foo.bar`
