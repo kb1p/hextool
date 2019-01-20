@@ -19,12 +19,13 @@ def message(msg):
     sys.stderr.write(os.linesep)
 
 class Converter(object):
-    __slots__ = "nCols", "colSize"
+    __slots__ = "nCols", "colSize", "delim"
     __printableChars = frozenset(string.printable) - frozenset(string.whitespace) | frozenset(" ")
 
     def __init__(self):
         self.nCols = 8
         self.colSize = 2
+        self.delim = "  "
 
     def bin2text(self, fin, fout, offset, size):
         try:
@@ -52,7 +53,7 @@ class Converter(object):
                 if blockSize > dataSize:
                     # padding
                     fout.write("  " * (blockSize - dataSize))
-                fout.write("  ")
+                fout.write(self.delim)
                 fout.write("".join(c if c in self.__printableChars else "." \
                                    for c in (map(chr, data) if VER3 else data)))
                 fout.write("\n")
@@ -70,7 +71,7 @@ class Converter(object):
                 start = addrSep + 1
             else:
                 start = 0
-            textSep = line.find("  ")
+            textSep = line.find(self.delim)
             data = line[start:textSep] if textSep > 0 else line[start:]
             for chunk in data.split():
                 if VER3:
@@ -92,7 +93,7 @@ def main(args):
     rev = False
     conv = Converter()
     offset, size = 0, -1
-    opts, freeargs = getopt.getopt(args[1:], "hrc:w:f:s:")
+    opts, freeargs = getopt.getopt(args[1:], "hrc:w:d:f:s:")
     for o, a in opts:
         if o == "-r":
             rev = True
@@ -100,6 +101,8 @@ def main(args):
             conv.nCols = parseNumber(a)
         elif o == "-w":
             conv.colSize = parseNumber(a)
+        elif o == "-d":
+            conv.delim = a
         elif o == "-f":
             offset = parseNumber(a)
         elif o == "-s":
@@ -111,8 +114,8 @@ def main(args):
     showUsage = showUsage or (nFreeArgs == 0 and rev)
     if showUsage:
         usage = """Usage:
-Dump:  %(prog)s [-c columns -w bytes_per_column -f offset -s size] [in-file] [out-file]
-Patch: %(prog)s -r [in-file] out-file
+Dump:  %(prog)s [-c columns -w bytes_per_column -d delim_str -f offset -s size] [in-file] [out-file]
+Patch: %(prog)s -r [-d delim_str] [in-file] out-file
 
 Arguments in rectangular brackets are optional. When optional files
 are not specified, use stdout (for dump) and stdin (for patch).
