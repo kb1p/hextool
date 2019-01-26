@@ -65,20 +65,37 @@ class Converter(object):
         for line in fin:
             # allow partial modification of the binary file
             addrSep = line.find(":")
+            outLen = -1
             if addrSep >= 0:
-                addr = int(line[0:addrSep], 16)
+                rangeStr = line[0:addrSep]
+                rangeSep = rangeStr.find("-")
+                if rangeSep >= 0:
+                    if rangeSep > 0:
+                        addr = int(rangeStr[0:rangeSep].strip(), 16)
+                    else:
+                        addr = fout.tell()
+                    outLen = int(rangeStr[rangeSep + 1:].strip(), 16) - addr + 1
+                else:
+                    addr = int(rangeStr.strip(), 16)
                 fout.seek(addr, os.SEEK_SET)
                 start = addrSep + 1
             else:
                 start = 0
             textSep = line.find(self.delim)
             data = line[start:textSep] if textSep > 0 else line[start:]
+            bindata = bytearray()
             for chunk in data.split():
                 if VER3:
-                    bindata = bytes(int(chunk[x:x+2], 16) for x in range(0, len(chunk), 2))
+                    blk = bytes(int(chunk[x:x+2], 16) for x in range(0, len(chunk), 2))
                 else:
-                    bindata = "".join(chr(int(chunk[x:x+2], 16)) for x in xrange(0, len(chunk), 2))
-                fout.write(bindata)
+                    blk = "".join(chr(int(chunk[x:x+2], 16)) for x in xrange(0, len(chunk), 2))
+                bindata += blk
+            dataLen = len(bindata)
+            if outLen < 0:
+                outLen = dataLen
+            while outLen > 0:
+                fout.write(bindata if outLen >= dataLen else bindata[0:outLen])
+                outLen -= dataLen
 
 def parseNumber(strnum):
     if strnum.startswith("0x"):
@@ -139,6 +156,8 @@ or decimal (default).
             conv.bin2text(fin, fout, offset, size)
     except IOError as err:
         message("I/O error: %s, file: \"%s\"" % (err.strerror, err.filename))
+    except KeyboardInterrupt:
+        message("Operation interrupted by user")
     finally:
         if fout != None:
             if fout == sys.stdout:

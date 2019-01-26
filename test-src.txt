@@ -1,0 +1,9 @@
+1234 5678           // Insert at the beginning
+-8: 1122            // Fill from current address to specified
+10: aabbccdd        // Insert at 0x10
+ff ff ff ff ff      // Insert right after the previous (at 0x14)
+100-150: a1b2 95    // Fill 0x100-0x150 (both ends inclusive) with pattern
+152 - 160: ee       // Spaces are ok; leave a 1 byte gap and fill some space with "0xee"
+ff                  // Insert right after the previous (at 0x161)
+
+
